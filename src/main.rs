@@ -9,7 +9,7 @@ use serde::{
     de::{self, Unexpected, Visitor},
     Deserializer,
 };
-use smart_leds::{SmartLedsWrite, RGB8};
+use smart_leds::{brightness, SmartLedsWrite, RGB8};
 use tokio::{
     signal,
     sync::mpsc::{channel, Receiver, Sender},
@@ -284,12 +284,8 @@ const NUM_LEDS: usize = 320;
 /// Print the current time on a static background
 async fn write_time(cancel_token: &CancellationToken, _sender: Sender<()>) -> Result<()> {
     let data: [RGB8; NUM_LEDS] = [RGB8::new(0, 0, 0); NUM_LEDS];
-    // // draw all the things
-    // data.iter_mut()
-    //     .for_each(|pix| *pix = colorscale(-80.0, -100.0, -10.0));
-    print!("making light strip...");
+
     let mut ws = Ws2812Rpi::new(NUM_LEDS as i32, PIN).unwrap();
-    println!("Done.");
     let cancel_indication = cancel_token.cancelled();
     tokio::pin!(cancel_indication);
 
@@ -304,7 +300,7 @@ async fn write_time(cancel_token: &CancellationToken, _sender: Sender<()>) -> Re
         .map(|_| StreamResult::Cancel);
 
     let mut loop_stream = tokio_stream::StreamExt::merge(interval, cancel_stream);
-    println!("Start ticking.");
+
     while let Some(StreamResult::Proceed(_tick)) = loop_stream.next().await {
         // set the current second to white
         let now = Epoch::now().unwrap();
@@ -322,7 +318,7 @@ async fn write_time(cancel_token: &CancellationToken, _sender: Sender<()>) -> Re
             data_to_write[*indices] = RGB8::new(50, 50, 50);
         }
 
-        ws.write(data_to_write.into_iter()).unwrap();
+        ws.write(brightness(data_to_write.into_iter(), 55)).unwrap();
     }
     Ok(())
 }
@@ -354,11 +350,10 @@ async fn draw_autos(
                 // set the second light
                 data_to_write[SECONDS[sec as usize]] = RGB8::new(200, 200, 200);
 
-                ws.write(data_to_write.iter().cloned())?;
+                ws.write(brightness(data_to_write.into_iter(), 55))?;
 
             },
             Some(new_stats) = stat_rx.recv() => {
-                println!("new stats loaded");
                 new_stats.iter().for_each(|stat| data[ANTENNAS[stat.ant as usize]] = stat.get_color());
                 // data impls Copy so we don't have to worry about over writing
                 let mut data_to_write = data;
@@ -369,7 +364,7 @@ async fn draw_autos(
                 // set the second light
                 data_to_write[SECONDS[sec as usize]] = RGB8::new(200, 200, 200);
 
-                ws.write(data_to_write.iter().cloned())?;
+                ws.write(brightness(data_to_write.into_iter(), 55))?;
             }
             _ = cancel_token.cancelled() => break,
             else =>  break,
@@ -401,14 +396,10 @@ async fn main() {
         }
     });
 
-    print!("stating up local task...");
     // Construct a local task set that can run `!Send` futures.
     let local = tokio::task::LocalSet::new();
-    println!("Done.");
     if args.time {
-        println!("Starting clock.");
         local.spawn_local(async move {
-            println!("inside local.");
             if let Err(err) = write_time(&cancel_token, send).await {
                 println!("Error during clock display: {err:?}");
                 cancel_token.cancel();

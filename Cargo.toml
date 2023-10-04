@@ -1,0 +1,25 @@
+[package]
+ name    = "hera-leds-rs"
+ version = "0.1.0"
+ edition = "2021"
+
+ # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ anyhow       = "1.0.75"
+ clap         = { version = "4.4.6", features = ["derive"] }
+ csv          = "1.2.2"
+ futures      = "0.3.28"
+ hifitime     = "3.8.4"
+ reqwest      = { version = "0.11.21", features = ["native-tls-vendored"] }
+ serde        = { version = "1.0.188", features = ["derive"] }
+ smart-leds   = "0.3.0"
+ tokio        = { version = "1.32.0", features = ["full"] }
+ tokio-stream = "0.1.14"
+ tokio-util   = "0.7.9"
+ ws281x-rpi   = "0.0.1"
+
+[profile.release]
+ lto           = "fat"
+ opt-level     = 3
+ codegen-units = 1

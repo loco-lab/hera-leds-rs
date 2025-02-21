@@ -408,7 +408,7 @@ async fn main() {
     } else {
         let (stat_tx, stat_rx) = channel(1);
 
-        let http_token = cancel_token.child_token();
+        let http_token = cancel_token.clone();
         tokio::spawn(async move {
             if let Err(err) = probe_online_stats(&http_token, stat_tx).await {
                 println!("Error during online stat generation: {err:?}. Shutting down.");
